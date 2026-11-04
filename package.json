@@ -10,7 +10,9 @@
     "node": "hardhat node",
     "deploy:mock:sepolia": "hardhat run scripts/deployMock.ts --network sepolia",
     "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
-    "mock:approval:sepolia": "hardhat run scripts/mockSetApproval.ts --network sepolia"
+    "mock:approval:sepolia": "hardhat run scripts/mockSetApproval.ts --network sepolia",
+    "frontend:dev": "npm --prefix frontend run dev",
+    "frontend:build": "npm --prefix frontend run build"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",

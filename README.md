@@ -29,7 +29,19 @@ scripts/
   mockSetApproval.ts                   Approuve / retire un émetteur sur le MOCK uniquement
 test/
   CertificateRegistry.test.ts          Tests unitaires
+frontend/                              Interface web React (Issuer + Verifier, Sepolia)
+deployments/sepolia.json               Adresses déployées (lues par le frontend)
 ```
+
+## Interface web
+
+```bash
+npm run frontend:dev
+# ou: cd frontend && npm install && npm run dev
+```
+
+Deux onglets uniquement (pas d'admin) : **Issuer** et **Verifier**.
+Le hash du PDF est calculé dans le navigateur ; le fichier ne quitte jamais l'appareil.
 
 ## Installation
 
