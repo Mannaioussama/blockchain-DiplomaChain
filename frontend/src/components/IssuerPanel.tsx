@@ -22,6 +22,7 @@ import {
   proofsForTree,
   type BatchEntry,
 } from "../lib/merkle";
+import { FilePicker } from "./FilePicker";
 
 type Props = {
   onAccountChange?: (address: string | null) => void;
@@ -377,16 +378,13 @@ export function IssuerPanel({ onAccountChange }: Props) {
 
       <div className="card-block">
         <h3 className="section-title">Single certificate</h3>
-        <label className="label" htmlFor="pdf">
-          Diploma PDF (hashed locally)
-        </label>
-        <input
+        <FilePicker
           id="pdf"
-          type="file"
+          label="Diploma PDF (hashed locally)"
           accept="application/pdf,.pdf"
-          onChange={(e) => void onPickFile(e.target.files?.[0] ?? null)}
+          fileName={fileName}
+          onFiles={(files) => void onPickFile(files?.[0] ?? null)}
         />
-        {fileName && <p className="hint">Selected: {fileName}</p>}
 
         <label className="label" htmlFor="hash">
           Certificate hash
@@ -442,22 +440,25 @@ export function IssuerPanel({ onAccountChange }: Props) {
       )}
 
       <div className="card-block">
-        <h3 className="section-title">Bonus — Merkle batch</h3>
+        <h3 className="section-title">Merkle batch</h3>
         <p className="hint">
           Issue many diplomas in one transaction. Build the tree in the browser,
           publish the root, then download per-student proofs.{" "}
           <code>count</code> is informational only on-chain.
         </p>
 
-        <label className="label" htmlFor="batch-pdfs">
-          Multiple diploma PDFs
-        </label>
-        <input
+        <FilePicker
           id="batch-pdfs"
-          type="file"
+          label="Multiple diploma PDFs"
           accept="application/pdf,.pdf"
           multiple
-          onChange={(e) => void onPickBatchFiles(e.target.files)}
+          buttonText="Choose files"
+          fileName={
+            batchEntries.length
+              ? `${batchEntries.length} file${batchEntries.length > 1 ? "s" : ""} selected`
+              : null
+          }
+          onFiles={(files) => void onPickBatchFiles(files)}
         />
 
         {batchEntries.length > 0 && (

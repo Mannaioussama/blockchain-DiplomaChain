@@ -13,6 +13,7 @@ import {
   type Status,
 } from "../lib/ethereum";
 import { parseProofInput } from "../lib/merkle";
+import { FilePicker } from "./FilePicker";
 
 type VerifyResult = {
   status: Status;
@@ -43,6 +44,8 @@ export function VerifierPanel() {
   const [batchRoot, setBatchRoot] = useState("");
   const [batchHash, setBatchHash] = useState("");
   const [batchProof, setBatchProof] = useState("");
+  const [batchFileName, setBatchFileName] = useState<string | null>(null);
+  const [bundleFileName, setBundleFileName] = useState<string | null>(null);
   const [batchBusy, setBatchBusy] = useState(false);
   const [batchError, setBatchError] = useState<string | null>(null);
   const [batchResult, setBatchResult] = useState<BatchVerifyResult | null>(null);
@@ -66,6 +69,7 @@ export function VerifierPanel() {
     if (!file) return;
     try {
       setBatchHash(await hashPdfFile(file));
+      setBatchFileName(file.name);
     } catch (err) {
       setBatchError(decodeContractError(err));
     }
@@ -80,6 +84,7 @@ export function VerifierPanel() {
         merkleRoot?: string;
         entries?: Array<{ certHash: string; proof: string[] }>;
       };
+      setBundleFileName(file.name);
       if (json.merkleRoot) setBatchRoot(json.merkleRoot);
       if (batchHash && json.entries?.length) {
         const entry = json.entries.find(
@@ -189,16 +194,13 @@ export function VerifierPanel() {
 
       <div className="card-block">
         <h3 className="section-title">Single certificate</h3>
-        <label className="label" htmlFor="v-pdf">
-          Diploma PDF (hashed locally)
-        </label>
-        <input
+        <FilePicker
           id="v-pdf"
-          type="file"
+          label="Diploma PDF (hashed locally)"
           accept="application/pdf,.pdf"
-          onChange={(e) => void onPickFile(e.target.files?.[0] ?? null)}
+          fileName={fileName}
+          onFiles={(files) => void onPickFile(files?.[0] ?? null)}
         />
-        {fileName && <p className="hint">Selected: {fileName}</p>}
 
         <label className="label" htmlFor="v-hash">
           Certificate hash
@@ -304,30 +306,27 @@ export function VerifierPanel() {
       )}
 
       <div className="card-block">
-        <h3 className="section-title">Bonus — verify in Merkle batch</h3>
+        <h3 className="section-title">Verify in Merkle batch</h3>
         <p className="hint">
           Needs the batch Merkle root, the diploma hash, and that diploma’s
           Merkle proof (from the issuer’s JSON download).
         </p>
 
-        <label className="label" htmlFor="b-pdf">
-          Diploma PDF (optional)
-        </label>
-        <input
+        <FilePicker
           id="b-pdf"
-          type="file"
+          label="Diploma PDF (optional)"
           accept="application/pdf,.pdf"
-          onChange={(e) => void onPickBatchFile(e.target.files?.[0] ?? null)}
+          fileName={batchFileName}
+          onFiles={(files) => void onPickBatchFile(files?.[0] ?? null)}
         />
 
-        <label className="label" htmlFor="b-bundle">
-          Proof bundle JSON (optional auto-fill)
-        </label>
-        <input
+        <FilePicker
           id="b-bundle"
-          type="file"
+          label="Proof bundle JSON (optional auto-fill)"
           accept="application/json,.json"
-          onChange={(e) => void onPickProofBundle(e.target.files?.[0] ?? null)}
+          buttonText="Choose JSON"
+          fileName={bundleFileName}
+          onFiles={(files) => void onPickProofBundle(files?.[0] ?? null)}
         />
 
         <label className="label" htmlFor="b-root">

@@ -233,13 +233,9 @@
   font-weight: 600;
 }
 
-.input,
-input[type="file"] {
+.input {
   width: 100%;
   box-sizing: border-box;
-}
-
-.input {
   padding: 0.8rem 0.9rem;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -257,9 +253,59 @@ input[type="file"] {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
-input[type="file"] {
-  padding: 0.65rem 0;
+.file-picker {
+  margin-top: 0.15rem;
+}
+
+.file-picker-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.file-picker-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.file-picker-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.file-picker-btn:hover {
+  background: color-mix(in srgb, var(--accent) 18%, white);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(16, 33, 28, 0.08);
+}
+
+.file-picker-input:focus-visible + .file-picker-btn {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.file-picker-name {
   color: var(--muted);
+  font-size: 0.9rem;
+  max-width: min(100%, 360px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mono {
