@@ -15,11 +15,22 @@ Le contrat dépend de `IssuerManager` (autre contrat du binôme) pour savoir si 
   `issuerApproved` indique si l'établissement est **toujours** approuvé : l'interface doit afficher un avertissement quand il vaut `false`.
 - Seul l'émetteur d'origine peut révoquer un certificat (même s'il a été retiré depuis). La révocation est définitive : un hash révoqué ne peut jamais être ré-émis.
 
+## Bonus — lots Merkle (batch)
+
+Émettre toute une promotion en **une transaction** via une racine Merkle (OpenZeppelin `StandardMerkleTree` / `MerkleProof`) :
+
+- `issueBatch(merkleRoot, count)` — `count` est **informatif seulement** (non vérifiable on-chain)
+- `verifyInBatch(root, certHash, proof)` — valide si la preuve est correcte et la feuille n'est pas révoquée ; expose aussi `issuerApproved`
+- `revokeBatchLeaf(root, certHash, proof)` — révocation **par diplôme** (pas toute la promo) ; preuve obligatoire
+- Feuille = `keccak256(bytes.concat(keccak256(abi.encode(certHash))))` (double hash anti second-preimage)
+- Preuve plafonnée à `MAX_PROOF_LENGTH = 32` (gaz borné)
+- Namespace séparé : `isValid(hash)` **ne voit pas** les lots Merkle
+
 ## Structure
 
 ```
 contracts/
-  CertificateRegistry.sol              Contrat principal
+  CertificateRegistry.sol              Contrat principal (+ bonus Merkle)
   interfaces/IIssuerManager.sol        Interface minimale attendue du contrat IssuerManager
   mocks/MockIssuerManager.sol          Mock pour tester / déployer avant le vrai IssuerManager
   mocks/MockRevertingIssuerManager.sol Mock de test (IssuerManager défaillant)
@@ -28,7 +39,8 @@ scripts/
   deploy.ts                            Déploie CertificateRegistry (adresse lue dans ISSUER_MANAGER_ADDRESS)
   mockSetApproval.ts                   Approuve / retire un émetteur sur le MOCK uniquement
 test/
-  CertificateRegistry.test.ts          Tests unitaires
+  CertificateRegistry.test.ts          Tests unitaires individuels
+  CertificateRegistry.batch.test.ts    Tests du bonus Merkle
 frontend/                              Interface web React (Issuer + Verifier, Sepolia)
 deployments/sepolia.json               Adresses déployées (lues par le frontend)
 ```

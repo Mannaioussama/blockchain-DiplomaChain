@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {IIssuerManager} from "./interfaces/IIssuerManager.sol";
 
 /// @title CertificateRegistry
@@ -13,6 +14,10 @@ import {IIssuerManager} from "./interfaces/IIssuerManager.sol";
 ///      - `verifyCertificate` also reports whether the issuer is still approved, so a verifier
 ///        can see if the institution is still accredited.
 ///      - Only the original issuer can revoke a certificate. Revocation is final.
+///      - Merkle batches (bonus): one root commits to many diploma hashes. Batches live in a
+///        separate namespace from individual certificates (`isValid` does not see batches).
+///        Leaf hashing matches OpenZeppelin StandardMerkleTree:
+///        `keccak256(bytes.concat(keccak256(abi.encode(certHash))))`.
 contract CertificateRegistry {
     /*//////////////////////////////////////////////////////////////
                                  TYPES
@@ -33,6 +38,16 @@ contract CertificateRegistry {
         Status status;
     }
 
+    /// @dev One Merkle batch issued by an approved issuer.
+    /// @param count Informational only — the contract cannot verify how many leaves the issuer
+    ///              actually put in the off-chain tree.
+    struct Batch {
+        address issuer;
+        uint40 issuedAt;
+        uint32 count;
+        bool exists;
+    }
+
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
@@ -40,8 +55,17 @@ contract CertificateRegistry {
     /// @notice IssuerManager contract used to check issuer approval (fixed at deployment).
     IIssuerManager public immutable issuerManager;
 
+    /// @notice Max Merkle proof length accepted on-chain (keeps gas bounded).
+    uint256 public constant MAX_PROOF_LENGTH = 32;
+
     /// @dev certHash (keccak256 of the PDF) => certificate data
     mapping(bytes32 certHash => Certificate) private _certificates;
+
+    /// @dev merkleRoot => batch metadata
+    mapping(bytes32 root => Batch) private _batches;
+
+    /// @dev merkleRoot => leaf (double-hashed certHash) => revoked
+    mapping(bytes32 root => mapping(bytes32 leaf => bool revoked)) private _batchLeafRevoked;
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
@@ -49,6 +73,10 @@ contract CertificateRegistry {
 
     event CertificateIssued(bytes32 indexed certHash, address indexed issuer, uint40 issuedAt);
     event CertificateRevoked(bytes32 indexed certHash, address indexed issuer, uint40 revokedAt);
+    event BatchIssued(bytes32 indexed merkleRoot, address indexed issuer, uint32 count, uint40 issuedAt);
+    event BatchLeafRevoked(
+        bytes32 indexed merkleRoot, bytes32 indexed certHash, address indexed issuer, uint40 revokedAt
+    );
 
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
@@ -61,6 +89,12 @@ contract CertificateRegistry {
     error CertificateNotFound(bytes32 certHash);
     error CertificateAlreadyRevoked(bytes32 certHash);
     error NotCertificateIssuer(address caller, address issuer);
+    error BatchAlreadyExists(bytes32 merkleRoot);
+    error BatchNotFound(bytes32 merkleRoot);
+    error InvalidProof();
+    error LeafAlreadyRevoked(bytes32 merkleRoot, bytes32 certHash);
+    error NotBatchIssuer(address caller, address issuer);
+    error ProofTooLong(uint256 length);
 
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
@@ -126,12 +160,45 @@ contract CertificateRegistry {
         emit CertificateRevoked(certHash, msg.sender, nowTs);
     }
 
+    /// @notice Issue a Merkle batch of diploma hashes in one transaction.
+    /// @param merkleRoot Root of an OpenZeppelin StandardMerkleTree over `bytes32` cert hashes.
+    /// @param count Informational leaf count claimed by the issuer (not verified on-chain).
+    function issueBatch(bytes32 merkleRoot, uint32 count) external onlyApprovedIssuer {
+        if (merkleRoot == bytes32(0)) revert InvalidHash();
+        if (_batches[merkleRoot].exists) revert BatchAlreadyExists(merkleRoot);
+
+        uint40 nowTs = uint40(block.timestamp);
+        _batches[merkleRoot] = Batch({issuer: msg.sender, issuedAt: nowTs, count: count, exists: true});
+
+        emit BatchIssued(merkleRoot, msg.sender, count, nowTs);
+    }
+
+    /// @notice Revoke one diploma leaf inside a batch. Requires a valid Merkle proof.
+    /// @dev Only the batch issuer; does not require the issuer to still be approved.
+    function revokeBatchLeaf(bytes32 merkleRoot, bytes32 certHash, bytes32[] calldata proof) external {
+        Batch storage batch = _batches[merkleRoot];
+        if (!batch.exists) revert BatchNotFound(merkleRoot);
+        if (batch.issuer != msg.sender) revert NotBatchIssuer(msg.sender, batch.issuer);
+        if (certHash == bytes32(0)) revert InvalidHash();
+        if (proof.length > MAX_PROOF_LENGTH) revert ProofTooLong(proof.length);
+
+        bytes32 leaf = _leafHash(certHash);
+        if (!MerkleProof.verify(proof, merkleRoot, leaf)) revert InvalidProof();
+        if (_batchLeafRevoked[merkleRoot][leaf]) revert LeafAlreadyRevoked(merkleRoot, certHash);
+
+        uint40 nowTs = uint40(block.timestamp);
+        _batchLeafRevoked[merkleRoot][leaf] = true;
+
+        emit BatchLeafRevoked(merkleRoot, certHash, msg.sender, nowTs);
+    }
+
     /*//////////////////////////////////////////////////////////////
                                   VIEWS
     //////////////////////////////////////////////////////////////*/
 
     /// @notice True if the certificate exists and has not been revoked.
     /// @dev Does NOT depend on the issuer's current approval (see contract-level rules).
+    ///      Does NOT look at Merkle batches (separate namespace).
     function isValid(bytes32 certHash) external view returns (bool) {
         return _certificates[certHash].status == Status.Valid;
     }
@@ -159,9 +226,56 @@ contract CertificateRegistry {
         }
     }
 
+    /// @notice Verify that `certHash` is part of a batch and not revoked.
+    /// @dev Same accreditation rule as individual certificates: a removed issuer does not
+    ///      invalidate the batch; only `issuerApproved` flips to false.
+    function verifyInBatch(bytes32 merkleRoot, bytes32 certHash, bytes32[] calldata proof)
+        external
+        view
+        returns (bool valid, address issuer, uint40 issuedAt, bool revoked, bool issuerApproved)
+    {
+        Batch memory batch = _batches[merkleRoot];
+        if (!batch.exists) {
+            return (false, address(0), 0, false, false);
+        }
+        if (certHash == bytes32(0) || proof.length > MAX_PROOF_LENGTH) {
+            return (false, batch.issuer, batch.issuedAt, false, _isIssuerApproved(batch.issuer));
+        }
+
+        bytes32 leaf = _leafHash(certHash);
+        bool inTree = MerkleProof.verify(proof, merkleRoot, leaf);
+        bool isRevoked = _batchLeafRevoked[merkleRoot][leaf];
+
+        issuer = batch.issuer;
+        issuedAt = batch.issuedAt;
+        revoked = isRevoked;
+        issuerApproved = _isIssuerApproved(batch.issuer);
+        valid = inTree && !isRevoked;
+    }
+
+    /// @notice Batch metadata for a Merkle root (empty / exists=false if unknown).
+    function getBatch(bytes32 merkleRoot)
+        external
+        view
+        returns (address issuer, uint40 issuedAt, uint32 count, bool exists)
+    {
+        Batch memory batch = _batches[merkleRoot];
+        return (batch.issuer, batch.issuedAt, batch.count, batch.exists);
+    }
+
+    /// @notice Whether a batch leaf was revoked (leaf = StandardMerkleTree double-hash of certHash).
+    function isBatchLeafRevoked(bytes32 merkleRoot, bytes32 certHash) external view returns (bool) {
+        return _batchLeafRevoked[merkleRoot][_leafHash(certHash)];
+    }
+
     /*//////////////////////////////////////////////////////////////
                                  INTERNAL
     //////////////////////////////////////////////////////////////*/
+
+    /// @dev OpenZeppelin StandardMerkleTree leaf for a single `bytes32` value.
+    function _leafHash(bytes32 certHash) private pure returns (bytes32) {
+        return keccak256(bytes.concat(keccak256(abi.encode(certHash))));
+    }
 
     /// @dev try/catch so a failing IssuerManager can never make verification revert:
     ///      verification still works and simply reports `false`.
