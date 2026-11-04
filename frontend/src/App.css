@@ -160,6 +160,51 @@
   letter-spacing: -0.02em;
 }
 
+.section-title {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-brand);
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.section-title.nested {
+  margin-top: 1.35rem;
+}
+
+.batch-list {
+  margin: 0.75rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.batch-list li {
+  margin-bottom: 0.55rem;
+}
+
+.batch-list strong {
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+}
+
+.root-box {
+  margin-top: 0.9rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
+  background: var(--accent-soft);
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 4.5rem;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
 .panel-header p {
   margin: 0 0 0.35rem;
   color: var(--muted);
