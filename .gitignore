@@ -1,0 +1,12 @@
+node_modules/
+.env
+cache/
+artifacts/
+typechain-types/
+coverage/
+coverage.json
+dist/
+
+# Local-network deployments are throwaway; only commit deployments/sepolia.json
+deployments/localhost.json
+deployments/hardhat.json
