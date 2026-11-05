@@ -49,6 +49,12 @@ const ERROR_MESSAGES: Record<string, string> = {
   NotCertificateIssuer:
     "Only the original issuer of this certificate can revoke it.",
   InvalidIssuerManager: "IssuerManager address is invalid.",
+  BatchAlreadyExists: "This Merkle root was already issued as a batch.",
+  BatchNotFound: "No batch found for this Merkle root.",
+  InvalidProof: "The Merkle proof is invalid for this root / hash.",
+  LeafAlreadyRevoked: "This batch leaf was already revoked.",
+  NotBatchIssuer: "Only the original batch issuer can revoke a leaf.",
+  ProofTooLong: "Merkle proof is too long (max 32 nodes).",
 };
 
 declare global {
