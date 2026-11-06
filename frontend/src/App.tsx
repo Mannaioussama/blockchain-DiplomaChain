@@ -37,8 +37,12 @@ export default function App() {
         </nav>
       </header>
 
-      <main key={tab} className="panel-shell">
-        {tab === "issuer" ? <IssuerPanel /> : <VerifierPanel />}
+      {/* Both panels stay mounted so form state survives tab switches. */}
+      <main className="panel-shell" hidden={tab !== "issuer"}>
+        <IssuerPanel />
+      </main>
+      <main className="panel-shell" hidden={tab !== "verifier"}>
+        <VerifierPanel />
       </main>
 
       <footer className="footer">

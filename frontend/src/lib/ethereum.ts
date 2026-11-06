@@ -22,6 +22,8 @@ export const PUBLIC_SEPOLIA_RPC = "https://ethereum-sepolia-rpc.publicnode.com";
 
 export const REGISTRY_ADDRESS = getAddress(deployment.certificateRegistry);
 export const ISSUER_MANAGER_ADDRESS = getAddress(deployment.issuerManager);
+/** First block to scan for registry events (history). */
+export const DEPLOY_BLOCK: number = deployment.deployBlock ?? 0;
 
 export const ETHERSCAN_TX = (hash: string) =>
   `https://sepolia.etherscan.io/tx/${hash}`;

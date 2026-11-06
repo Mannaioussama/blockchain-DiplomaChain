@@ -23,6 +23,7 @@ async function main() {
   await registry.waitForDeployment();
 
   const registryAddress = await registry.getAddress();
+  const receipt = await registry.deploymentTransaction()?.wait();
   console.log(`CertificateRegistry deployed at: ${registryAddress}`);
 
   // Save the addresses so the web interface can read them later.
@@ -38,6 +39,7 @@ async function main() {
         issuerManager: issuerManagerAddress,
         certificateRegistry: registryAddress,
         deployedAt: new Date().toISOString(),
+        deployBlock: receipt?.blockNumber,
       },
       null,
       2
