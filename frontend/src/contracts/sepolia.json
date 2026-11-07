@@ -1,8 +1,19 @@
 {
   "network": "sepolia",
   "deployer": "0x4b3ca1Af5B9f69EaC7cED12368905C6511F6b825",
-  "issuerManager": "0xf399fddd8b11cb10A974EC76a98Ec93845D168F1",
-  "certificateRegistry": "0x981181e8CB715A7533406b065Ce8123E49C12817",
-  "deployedAt": "2026-11-04T08:00:48.509Z",
-  "deployBlock": 12061090
+  "issuerManager": "0x0e4D63FCB3123D9087f41a95fc356a29a4c10e99",
+  "issuerManagerDeployBlock": 12083603,
+  "certificateRegistry": "0x64d98AcA3BB2899C1cd9a7aEB65CF7570B07E8E2",
+  "deployedAt": "2026-11-07T12:16:13.940Z",
+  "deployBlock": 12083604,
+  "founders": [
+    {
+      "address": "0x4b3ca1Af5B9f69EaC7cED12368905C6511F6b825",
+      "name": "ESPRIT"
+    },
+    {
+      "address": "0xFf1C1d245e5b57FEECEeE56F4A602611D7367223",
+      "name": "Universite de Tunis El Manar"
+    }
+  ]
 }

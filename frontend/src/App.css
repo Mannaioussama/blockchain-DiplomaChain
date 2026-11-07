@@ -38,11 +38,13 @@
   }
 }
 
+/* Brand on the left (both rows); identity top-right; tabs bottom-right. Stacks on narrow screens. */
 .top {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 1.75rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  column-gap: 1.75rem;
+  row-gap: 1rem;
   margin-bottom: 1.75rem;
   padding: 1.5rem 1.5rem 1.35rem;
   border: 1px solid color-mix(in srgb, var(--line) 70%, white);
@@ -59,6 +61,8 @@
 }
 
 .brand-block {
+  grid-column: 1;
+  grid-row: 1 / span 2;
   max-width: 34rem;
 }
 
@@ -89,9 +93,85 @@
   font-size: 1.02rem;
 }
 
-.tabs {
+.identity {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  align-self: start;
   display: flex;
-  align-self: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 100%;
+  padding: 0.55rem 0.7rem 0.55rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  animation: flash-in 0.28s ease both;
+}
+
+.identity-text {
+  display: grid;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.identity strong {
+  font-size: 0.92rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.identity .badge {
+  white-space: nowrap;
+}
+
+.identity .mono {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.btn.small {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.steps {
+  margin: 0.25rem 0 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.55rem;
+  color: var(--muted);
+}
+
+.steps strong {
+  color: var(--ink);
+}
+
+.vote-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.1rem;
+  margin-top: 0.55rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.vote-bar strong {
+  color: var(--ink);
+}
+
+.issuer-name {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.tabs {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: end;
+  align-self: end;
+  display: flex;
   gap: 0;
   border-bottom: 1px solid var(--line);
 }
@@ -576,13 +656,28 @@ a {
   text-underline-offset: 2px;
 }
 
+@media (max-width: 720px) {
+  .top {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+
+  .brand-block,
+  .identity,
+  .tabs {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: stretch;
+  }
+
+  .identity .btn.small {
+    margin-left: auto;
+  }
+}
+
 @media (max-width: 640px) {
   .top {
     padding: 1.2rem;
-  }
-
-  .tabs {
-    width: 100%;
   }
 
   .tab {

@@ -38,11 +38,31 @@ export const STATUS_LABEL: Record<Status, string> = {
   2: "Revoked",
 };
 
+/** Mirrors IssuerManager.InstitutionStatus. */
+export type InstitutionStatus = 0 | 1 | 2 | 3 | 4 | 5;
+
+export const INSTITUTION_STATUS_LABEL: Record<InstitutionStatus, string> = {
+  0: "Not registered",
+  1: "Application pending",
+  2: "Member",
+  3: "Application rejected",
+  4: "Removed by vote",
+  5: "Left the consortium",
+};
+
+export type Institution = {
+  address: string;
+  name: string;
+  status: InstitutionStatus;
+  updatedAt: number;
+};
+
 const registryIface = new Interface(CertificateRegistryAbi);
+const managerIface = new Interface(IssuerManagerAbi);
 
 const ERROR_MESSAGES: Record<string, string> = {
   NotApprovedIssuer:
-    "Your wallet is not an approved issuer. Ask the admin to approve it first.",
+    "Your wallet is not an approved issuer. Your institution must be admitted by the consortium first.",
   InvalidHash: "The certificate hash is invalid (cannot be the zero hash).",
   CertificateAlreadyExists:
     "A certificate with this hash already exists (or was revoked — re-issue is blocked).",
@@ -57,6 +77,16 @@ const ERROR_MESSAGES: Record<string, string> = {
   LeafAlreadyRevoked: "This batch leaf was already revoked.",
   NotBatchIssuer: "Only the original batch issuer can revoke a leaf.",
   ProofTooLong: "Merkle proof is too long (max 32 nodes).",
+  InvalidName: "The institution name must be between 1 and 64 characters.",
+  NotMember: "This wallet is not a member of the consortium.",
+  AlreadyMember: "This institution is already a member of the consortium.",
+  OpenProposalExists: "There is already an open proposal about this institution.",
+  NoOpenApplication: "You have no pending application to withdraw.",
+  ProposalNotOpen: "This proposal is already closed.",
+  AlreadyVoted: "You already voted on this proposal.",
+  CannotVoteOnOwnRemoval: "You cannot vote on your own removal.",
+  CannotProposeOwnRemoval: "Use “Leave the consortium” to remove your own institution.",
+  LastMember: "The last member cannot leave the consortium.",
 };
 
 declare global {
@@ -147,6 +177,23 @@ export function getIssuerManager(runner: Signer | Provider): Contract {
   return new Contract(ISSUER_MANAGER_ADDRESS, IssuerManagerAbi, runner);
 }
 
+export async function getInstitution(
+  address: string,
+  runner: Signer | Provider = getReadProvider()
+): Promise<Institution> {
+  const result = (await getIssuerManager(runner).getInstitution(address)) as {
+    name: string;
+    status: bigint;
+    updatedAt: bigint;
+  };
+  return {
+    address,
+    name: result.name,
+    status: Number(result.status) as InstitutionStatus,
+    updatedAt: Number(result.updatedAt),
+  };
+}
+
 export async function hashPdfFile(file: File): Promise<string> {
   const bytes = new Uint8Array(await file.arrayBuffer());
   return keccak256(bytes);
@@ -185,15 +232,21 @@ export function decodeContractError(err: unknown): string {
   walk(err);
 
   for (const data of candidates) {
-    try {
-      const parsed = registryIface.parseError(data);
-      if (parsed) {
-        const human = ERROR_MESSAGES[parsed.name];
-        return human ?? `${parsed.name}`;
+    for (const iface of [registryIface, managerIface]) {
+      try {
+        const parsed = iface.parseError(data);
+        if (parsed) {
+          const human = ERROR_MESSAGES[parsed.name];
+          return human ?? `${parsed.name}`;
+        }
+      } catch {
+        // try next interface / candidate
       }
-    } catch {
-      // try next candidate
     }
+  }
+
+  if (err && typeof err === "object" && "code" in err && err.code === "ACTION_REJECTED") {
+    return "Request rejected in MetaMask.";
   }
 
   if (err && typeof err === "object" && "shortMessage" in err) {
