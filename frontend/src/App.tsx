@@ -92,36 +92,34 @@ export default function App() {
             your browser.
           </p>
         </div>
-        <div className="top-side">
-          {session && (
-            <div className="identity">
-              <div>
-                <strong>{institution?.name || "Unregistered wallet"}</strong>
-                <span className="mono">{shortAddress(session.address)}</span>
-              </div>
-              {institution && (
-                <span className={`badge ${institution.status === 2 ? "ok" : ""}`}>
-                  {INSTITUTION_STATUS_LABEL[institution.status]}
-                </span>
-              )}
-              <button type="button" className="btn small" onClick={handleSignOut}>
-                Sign out
-              </button>
+        {session && (
+          <div className="identity">
+            <div className="identity-text">
+              <strong>{institution?.name || "New institution"}</strong>
+              <span className="mono">{shortAddress(session.address)}</span>
             </div>
-          )}
-          <nav className="tabs" aria-label="Main">
-            {tabs.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                className={activeTab === t.id ? "tab active" : "tab"}
-                onClick={() => setTab(t.id)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </nav>
-        </div>
+            {institution && (
+              <span className={`badge ${institution.status === 2 ? "ok" : ""}`}>
+                {INSTITUTION_STATUS_LABEL[institution.status]}
+              </span>
+            )}
+            <button type="button" className="btn small" onClick={handleSignOut}>
+              Sign out
+            </button>
+          </div>
+        )}
+        <nav className="tabs" aria-label="Main">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={activeTab === t.id ? "tab active" : "tab"}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
       </header>
 
       {/* Panels stay mounted so form state survives tab switches. */}
