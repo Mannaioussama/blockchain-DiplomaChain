@@ -96,6 +96,10 @@ export function IssuerPanel({ onAccountChange }: Props) {
   }, [onAccountChange, refreshApproval]);
 
   useEffect(() => {
+    if (hasMetaMask()) void connect();
+  }, [connect]);
+
+  useEffect(() => {
     if (!window.ethereum?.on) return;
     const onAccounts = (accounts: unknown) => {
       const list = accounts as string[];
@@ -346,7 +350,10 @@ export function IssuerPanel({ onAccountChange }: Props) {
     <section className="panel">
       <header className="panel-header">
         <h2>Issuer</h2>
-        <p>Issue or revoke a diploma hash. Only approved issuers can issue.</p>
+        <p>
+          Issue or revoke a diploma hash. Only member institutions of the consortium can issue;
+          former members can still revoke their own diplomas.
+        </p>
       </header>
 
       <div className="card-block">

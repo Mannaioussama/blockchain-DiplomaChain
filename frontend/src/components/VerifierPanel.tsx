@@ -3,6 +3,7 @@ import {
   decodeContractError,
   ETHERSCAN_ADDRESS,
   formatTimestamp,
+  getInstitution,
   getReadProvider,
   getRegistry,
   hashPdfFile,
@@ -35,12 +36,35 @@ type BatchVerifyResult = {
 
 const ZERO = "0x0000000000000000000000000000000000000000";
 
+async function institutionName(issuer: string): Promise<string | null> {
+  if (issuer === ZERO) return null;
+  try {
+    return (await getInstitution(issuer)).name || null;
+  } catch {
+    return null;
+  }
+}
+
+function IssuerCell({ issuer, name }: { issuer: string; name: string | null }) {
+  if (issuer === ZERO) return <div className="mono">—</div>;
+  return (
+    <div>
+      {name && <strong className="issuer-name">{name}</strong>}
+      <a className="mono" href={ETHERSCAN_ADDRESS(issuer)} target="_blank" rel="noreferrer">
+        {shortAddress(issuer)}
+      </a>
+    </div>
+  );
+}
+
 export function VerifierPanel() {
   const [hash, setHash] = useState("");
   const [fileName, setFileName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<VerifyResult | null>(null);
+  const [issuerName, setIssuerName] = useState<string | null>(null);
+  const [batchIssuerName, setBatchIssuerName] = useState<string | null>(null);
 
   const [batchRoot, setBatchRoot] = useState("");
   const [batchHash, setBatchHash] = useState("");
@@ -136,6 +160,7 @@ export function VerifierPanel() {
         }>,
       ]);
 
+      setIssuerName(await institutionName(verified.issuer));
       setResult({
         status: Number(verified.status) as Status,
         issuer: verified.issuer,
@@ -168,6 +193,7 @@ export function VerifierPanel() {
         revoked: boolean;
         issuerApproved: boolean;
       };
+      setBatchIssuerName(await institutionName(verified.issuer));
       setBatchResult({
         valid: verified.valid,
         issuer: verified.issuer,
@@ -244,8 +270,8 @@ export function VerifierPanel() {
           <strong>Warning — issuing institution is no longer accredited.</strong>
           <p>
             This diploma hash is still marked <em>Valid</em> on-chain (it was not
-            revoked), but the issuer is no longer approved in IssuerManager.
-            Treat this result with caution.
+            revoked), but the issuing institution is no longer a member of the
+            consortium. Treat this result with caution.
           </p>
         </div>
       )}
@@ -287,19 +313,7 @@ export function VerifierPanel() {
             </div>
             <div>
               <div className="label">Issuer</div>
-              <div className="mono">
-                {result.issuer === ZERO ? (
-                  "—"
-                ) : (
-                  <a
-                    href={ETHERSCAN_ADDRESS(result.issuer)}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {shortAddress(result.issuer)}
-                  </a>
-                )}
-              </div>
+              <IssuerCell issuer={result.issuer} name={issuerName} />
             </div>
             <div>
               <div className="label">Issued at</div>
@@ -394,7 +408,7 @@ export function VerifierPanel() {
           <strong>Warning — issuing institution is no longer accredited.</strong>
           <p>
             This batch leaf is still valid (not revoked), but the issuer is no
-            longer approved in IssuerManager.
+            longer a member of the consortium.
           </p>
         </div>
       )}
@@ -428,19 +442,7 @@ export function VerifierPanel() {
             </div>
             <div>
               <div className="label">Issuer</div>
-              <div className="mono">
-                {batchResult.issuer === ZERO ? (
-                  "—"
-                ) : (
-                  <a
-                    href={ETHERSCAN_ADDRESS(batchResult.issuer)}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {shortAddress(batchResult.issuer)}
-                  </a>
-                )}
-              </div>
+              <IssuerCell issuer={batchResult.issuer} name={batchIssuerName} />
             </div>
             <div>
               <div className="label">Batch issued at</div>

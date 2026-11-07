@@ -70,8 +70,14 @@ npm run frontend:dev
 # ou: cd frontend && npm install && npm run dev
 ```
 
-Deux onglets uniquement (pas d'admin) : **Issuer** et **Verifier**.
-Le hash du PDF est calculé dans le navigateur ; le fichier ne quitte jamais l'appareil.
+- **Connexion avec MetaMask** (pas d'email ni de mot de passe) : l'utilisateur signe un message
+  au format « Sign-In with Ethereum » (gratuit, aucune transaction). Le rôle est lu **on-chain** dans `IssuerManager`.
+- **Issuer** : établissements membres (et anciens membres, pour révoquer leurs propres diplômes).
+- **Consortium** : statut de l'établissement, candidature, membres, propositions et votes (aucune page admin).
+- **Verifier** : public, sans connexion ; affiche le nom de l'établissement émetteur et un avertissement s'il n'est plus membre.
+
+La connexion est une commodité d'interface : la vraie sécurité reste la signature des transactions,
+vérifiée par les contrats. Le hash du PDF est calculé dans le navigateur ; le fichier ne quitte jamais l'appareil.
 
 ## Installation
 
