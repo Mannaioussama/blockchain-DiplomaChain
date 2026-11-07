@@ -1,10 +1,24 @@
-# DiplomaChain — CertificateRegistry
+# DiplomaChain
 
-Vérification décentralisée de diplômes (mini-projet Blockchain, ESPRIT).
-Ce dépôt contient le contrat `CertificateRegistry` : émission, révocation et vérification des certificats.
+Vérification décentralisée de diplômes (mini-projet Blockchain, ESPRIT). Deux contrats :
+
+- `CertificateRegistry` : émission, révocation et vérification des certificats.
+- `IssuerManager` : consortium des établissements habilités à émettre, **sans admin** (vote des membres).
+
 Seul le hash `keccak256` du PDF du diplôme est stocké on-chain, jamais le document ni de données personnelles.
+`CertificateRegistry` interroge `IssuerManager.isApprovedIssuer(address)` pour savoir si un établissement est approuvé.
 
-Le contrat dépend de `IssuerManager` (autre contrat du binôme) pour savoir si un établissement est approuvé.
+## IssuerManager — consortium sans admin
+
+- Les établissements **fondateurs** sont fixés une seule fois au déploiement ; ensuite personne n'a de pouvoir spécial.
+- `applyToJoin(name)` : un établissement demande à rejoindre le consortium (statut `Pending`).
+- `vote(proposalId, support)` : chaque membre vote ; la **majorité stricte** des votants éligibles décide,
+  et la proposition se clôture automatiquement au vote décisif.
+- `proposeRemoval(target)` : un membre propose de retirer un autre membre ; la cible ne vote pas sur son propre retrait.
+- `leave()` : un membre quitte volontairement le consortium (sauf le dernier membre).
+- `withdrawApplication()` : le candidat retire sa demande.
+- `finalize(proposalId)` : clôture une proposition devenue décidée après un changement du nombre de membres.
+- `isApprovedIssuer(address)` : `view`, renvoie `false` (sans revert) pour une adresse inconnue, candidate, refusée, retirée ou partie.
 
 ## Règles métier
 
@@ -30,17 +44,21 @@ Le contrat dépend de `IssuerManager` (autre contrat du binôme) pour savoir si 
 
 ```
 contracts/
-  CertificateRegistry.sol              Contrat principal (+ bonus Merkle)
-  interfaces/IIssuerManager.sol        Interface minimale attendue du contrat IssuerManager
-  mocks/MockIssuerManager.sol          Mock pour tester / déployer avant le vrai IssuerManager
+  CertificateRegistry.sol              Registre des diplômes (+ bonus Merkle)
+  IssuerManager.sol                    Consortium des établissements (vote, sans admin)
+  interfaces/IIssuerManager.sol        Interface commune aux deux contrats
+  mocks/MockIssuerManager.sol          Mock pour les tests unitaires du registre
   mocks/MockRevertingIssuerManager.sol Mock de test (IssuerManager défaillant)
 scripts/
+  deployAll.ts                         Déploie IssuerManager (fondateurs) + CertificateRegistry
   deployMock.ts                        Déploie le mock et approuve le wallet du déployeur
   deploy.ts                            Déploie CertificateRegistry (adresse lue dans ISSUER_MANAGER_ADDRESS)
   mockSetApproval.ts                   Approuve / retire un émetteur sur le MOCK uniquement
 test/
   CertificateRegistry.test.ts          Tests unitaires individuels
   CertificateRegistry.batch.test.ts    Tests du bonus Merkle
+  IssuerManager.test.ts                Tests du consortium (candidature, vote, retrait, départ)
+  Integration.test.ts                  Vrai IssuerManager + CertificateRegistry ensemble
 frontend/                              Interface web React (Issuer + Verifier, Sepolia)
 deployments/sepolia.json               Adresses déployées (lues par le frontend)
 ```
@@ -91,12 +109,17 @@ npm run coverage     # couverture (rapport HTML dans coverage/index.html)
    npx hardhat verify --network sepolia <ADRESSE_REGISTRY> <ADRESSE_ISSUER_MANAGER>
    ```
 
-### Passer au vrai IssuerManager
+### Déployer les deux vrais contrats
 
-L'adresse de l'`IssuerManager` est fixée à la construction (`immutable`). Quand le binôme a déployé son contrat :
-mettre sa vraie adresse dans `ISSUER_MANAGER_ADDRESS` et relancer `npm run deploy:sepolia`.
-Cela crée un **nouveau** registre (vide) : les certificats émis sur l'ancien registre ne sont pas migrés.
-Son `isApprovedIssuer(address)` doit rester une fonction `view`, renvoyer `false` (sans revert) pour une adresse inconnue ou retirée.
+Remplir `FOUNDER_ADDRESSES` et `FOUNDER_NAMES` dans `.env` (listes séparées par des virgules, même ordre), puis :
+
+```bash
+npm run deploy:all:sepolia
+```
+
+Le script déploie `IssuerManager` avec ses fondateurs, puis un `CertificateRegistry` lié à lui, et écrit `deployments/sepolia.json`.
+L'adresse de l'`IssuerManager` est fixée dans le registre (`immutable`) : c'est un **nouveau** registre vide,
+les certificats de l'ancien registre (lié au mock) ne sont pas migrés.
 
 ### Tester le cas « émetteur retiré » avec le mock
 
@@ -115,6 +138,10 @@ Puis `verifyCertificate` renvoie `issuerApproved = false` alors que `isValid` re
 - Un hash de PDF prévisible peut être deviné par dictionnaire : intégrer un sel aléatoire dans le document avant de le hasher.
 - L'adresse de l'`IssuerManager` ne peut pas être changée sans redéployer le registre.
 - Un émetteur approuvé peut enregistrer le hash d'un document avant l'émetteur légitime (risque limité aux émetteurs approuvés).
+- Consortium : la majorité est calculée sur le nombre **actuel** de membres ; un vote déjà exprimé par un membre parti ou retiré reste compté.
+- Consortium à 2 membres : un seul membre suffit pour retirer l'autre (la cible ne vote pas). Prévoir au moins 3 membres en production.
+- Une proposition n'expire pas : elle reste ouverte tant que la majorité n'est pas atteinte (le candidat peut retirer sa demande).
+- Le registre fait entièrement confiance à l'`IssuerManager` (hypothèse de confiance).
 
 ## Sécurité
 

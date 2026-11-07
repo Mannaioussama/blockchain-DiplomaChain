@@ -22,7 +22,9 @@ import {
   proofsForTree,
   type BatchEntry,
 } from "../lib/merkle";
+import { rememberLabel } from "../lib/history";
 import { FilePicker } from "./FilePicker";
+import { IssuerHistory } from "./IssuerHistory";
 
 type Props = {
   onAccountChange?: (address: string | null) => void;
@@ -55,6 +57,8 @@ export function IssuerPanel({ onAccountChange }: Props) {
   const [revokeRoot, setRevokeRoot] = useState("");
   const [revokeHash, setRevokeHash] = useState("");
   const [revokeProof, setRevokeProof] = useState("");
+  const [historyKey, setHistoryKey] = useState(0);
+  const reloadHistory = () => setHistoryKey((k) => k + 1);
 
   const refreshApproval = useCallback(async (who: string, runner: Signer) => {
     try {
@@ -138,6 +142,7 @@ export function IssuerPanel({ onAccountChange }: Props) {
     if (!file) return;
     try {
       const h = await hashPdfFile(file);
+      rememberLabel(h, file.name);
       setHash(h);
       setFileName(file.name);
       setMessage({
@@ -182,6 +187,7 @@ export function IssuerPanel({ onAccountChange }: Props) {
             : "Certificate revoked successfully.",
         tx: tx.hash,
       });
+      reloadHistory();
       await refreshApproval(address!, signer!);
     } catch (err) {
       setMessage({ type: "err", text: decodeContractError(err) });
@@ -198,7 +204,9 @@ export function IssuerPanel({ onAccountChange }: Props) {
     try {
       const next: BatchEntry[] = [];
       for (const file of Array.from(files)) {
-        next.push({ label: file.name, certHash: await hashPdfFile(file) });
+        const certHash = await hashPdfFile(file);
+        rememberLabel(certHash, file.name);
+        next.push({ label: file.name, certHash });
       }
       setBatchEntries(next);
       setBatchMessage({
@@ -237,6 +245,7 @@ export function IssuerPanel({ onAccountChange }: Props) {
       setBatchTree(tree);
       setBatchRoot(root);
       setRevokeRoot(root);
+      rememberLabel(root, `Batch of ${entries.length} PDFs`);
       setBatchMessage({
         type: "ok",
         text: `Merkle root ready (${entries.length} leaves). You can issue the batch and download proofs.`,
@@ -291,6 +300,7 @@ export function IssuerPanel({ onAccountChange }: Props) {
         text: "Batch issued on-chain. Download proofs for students.",
         tx: tx.hash,
       });
+      reloadHistory();
       await refreshApproval(address!, signer!);
     } catch (err) {
       setBatchMessage({ type: "err", text: decodeContractError(err) });
@@ -324,6 +334,7 @@ export function IssuerPanel({ onAccountChange }: Props) {
         text: "Batch leaf revoked.",
         tx: tx.hash,
       });
+      reloadHistory();
     } catch (err) {
       setBatchMessage({ type: "err", text: decodeContractError(err) });
     } finally {
@@ -581,6 +592,8 @@ export function IssuerPanel({ onAccountChange }: Props) {
           )}
         </div>
       )}
+
+      {address && <IssuerHistory address={address} refreshKey={historyKey} />}
 
       <p className="hint mono">Registry: {REGISTRY_ADDRESS}</p>
     </section>

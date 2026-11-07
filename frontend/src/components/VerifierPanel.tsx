@@ -12,6 +12,7 @@ import {
   STATUS_LABEL,
   type Status,
 } from "../lib/ethereum";
+import { rememberLabel } from "../lib/history";
 import { parseProofInput } from "../lib/merkle";
 import { FilePicker } from "./FilePicker";
 
@@ -56,6 +57,7 @@ export function VerifierPanel() {
     if (!file) return;
     try {
       const h = await hashPdfFile(file);
+      rememberLabel(h, file.name);
       setHash(h);
       setFileName(file.name);
     } catch (err) {
@@ -68,7 +70,9 @@ export function VerifierPanel() {
     setBatchResult(null);
     if (!file) return;
     try {
-      setBatchHash(await hashPdfFile(file));
+      const h = await hashPdfFile(file);
+      rememberLabel(h, file.name);
+      setBatchHash(h);
       setBatchFileName(file.name);
     } catch (err) {
       setBatchError(decodeContractError(err));
@@ -82,9 +86,13 @@ export function VerifierPanel() {
       const text = await file.text();
       const json = JSON.parse(text) as {
         merkleRoot?: string;
-        entries?: Array<{ certHash: string; proof: string[] }>;
+        entries?: Array<{ label?: string; certHash: string; proof: string[] }>;
       };
       setBundleFileName(file.name);
+      json.entries?.forEach((e) => e.label && rememberLabel(e.certHash, e.label));
+      if (json.merkleRoot && json.entries) {
+        rememberLabel(json.merkleRoot, `Batch of ${json.entries.length} PDFs`);
+      }
       if (json.merkleRoot) setBatchRoot(json.merkleRoot);
       if (batchHash && json.entries?.length) {
         const entry = json.entries.find(

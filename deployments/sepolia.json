@@ -3,5 +3,6 @@
   "deployer": "0x4b3ca1Af5B9f69EaC7cED12368905C6511F6b825",
   "issuerManager": "0xf399fddd8b11cb10A974EC76a98Ec93845D168F1",
   "certificateRegistry": "0x981181e8CB715A7533406b065Ce8123E49C12817",
-  "deployedAt": "2026-11-04T08:00:48.509Z"
+  "deployedAt": "2026-11-04T08:00:48.509Z",
+  "deployBlock": 12061090
 }
